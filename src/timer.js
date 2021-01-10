@@ -1,5 +1,5 @@
 //timer duration in ms
-var duration = 9000
+var duration = 30000
 //turn and session timer
 var timer = null
 

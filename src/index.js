@@ -17,8 +17,6 @@ const auth = require('./auth')
 var prefix = 'k ' 
 
 
-//declare default time
-var duration = 5000
 
 //declare dafault karaoke host role
 var hostRole = 'Karaoke Host'
