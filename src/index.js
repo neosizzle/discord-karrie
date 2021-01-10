@@ -52,26 +52,26 @@ bot.on('message', msg => {
                     .setThumbnail('attachment://karrie.png')
                     .addFields(
                       { name: '**General commands:**',
-                       value: `${prefix}help \`Shows available commands for Karrie\`
-                              ${prefix}ping \`Checks your ping with the bot\`` },
+                       value: `\`${prefix}help\` Shows available commands for Karrie
+                              \`${prefix}ping\` Checks your ping with the bot` },
                       
                       { name: '**Karaoke commands:**',
-                       value: `${prefix}start \`Starts karaoke session\`
-                              ${prefix}stop \`Stops current karaoke session\`
-                              ${prefix}addme \`Adds you to the karaoke queue\`
-                              ${prefix}removeme \`Removes you from the karaoke queue\`
-                              ${prefix}done \`Pass the turn to the next person in queue\`
+                       value: `\`${prefix}start\` Starts karaoke session
+                              \`${prefix}stop\` Stops current karaoke session
+                              \`${prefix}addme\` Adds you to the karaoke queue
+                              \`${prefix}removeme\` Removes you from the karaoke queue
+                              \`${prefix}done\` Pass the turn to the next person in queue
                               `},
                       {name:'**Admin commands** \n__*Only those who has admin permissions can use these commands*__',
-                       value :`${prefix}hostrole <VALUE> \` Change the role to be recognized by Karrie as a karaoke host.\`
-                                ${prefix}setprefix <VALUE> \` Change the prefix for Karrie commands.\`
+                       value :`\`${prefix}hostrole <VALUE>\`  Change the role to be recognized by Karrie as a karaoke host.
+                                \`${prefix}setprefix <VALUE>\`  Change the prefix for Karrie commands.
                                 `},
                       {name:`**Karaoke host commands** \n__*Only those who has admin permissions or ${hostRole} role can use these commands*__`,
-                        value:`${prefix}settimer <VALUE_IN_SECONDS> \` Change the duration of a person is given to sing.\`
-                                ${prefix}skip \` Skip the current person in karaoke queue\``}
-                    )
+                        value:`\`${prefix}settimer <VALUE_IN_SECONDS>  Change the duration of a person is given to sing.
+                                \`${prefix}skip\`  Skip the current person in karaoke queue}`
+                      })
                     .setTimestamp()
-	                  .setFooter('nszl#8082');
+	                 
 
  
 
