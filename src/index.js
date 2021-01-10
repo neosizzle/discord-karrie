@@ -123,7 +123,7 @@ bot.on('message', msg => {
   if(msg.content.startsWith(`${prefix}settimer`)){
 
     //admin authentication
-    if(!auth.authenticate(msg.member.roles,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
+    if(!auth.authenticate(msg.member.roles.cache,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
       return msg.channel.send(`YOU ARE NOT WORTHY ${msg.author}`)
     }
 
@@ -145,7 +145,7 @@ bot.on('message', msg => {
   if(msg.content.startsWith(`${prefix}setprefix`)){
 
     //admin check
-    if(!auth.authenticate(msg.member.roles,"Karaoke Host") && !msg.member.hasPermission('ADMINISTRATOR')){
+    if(!auth.authenticate(msg.member.roles.cache,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
       return msg.channel.send(`YOU ARE NOT WORTHY ${msg.author}`)
     }
     
@@ -175,7 +175,7 @@ bot.on('message', msg => {
   if(msg.content == `${prefix}skip`){
 
     //admin authentication
-    if(!auth.authenticate(msg.member.roles,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
+    if(!auth.authenticate(msg.member.roles.cache,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
       return msg.channel.send(`YOU ARE NOT WORTHY ${msg.author}`)
     }
 
