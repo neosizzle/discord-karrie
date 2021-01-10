@@ -2,7 +2,10 @@
  * 
  * todo:
  * 
- * -deployment
+ * -fix help 
+ * -fix help
+ * -fix ping
+ * -addme songname
  */
 
 require('dotenv').config();
@@ -67,7 +70,7 @@ bot.on('message', msg => {
                                 \`${prefix}setprefix <VALUE>\`  Change the prefix for Karrie commands.
                                 `},
                       {name:`**Karaoke host commands** \n__*Only those who has admin permissions or ${hostRole} role can use these commands*__`,
-                        value:`\`${prefix}settimer <VALUE_IN_SECONDS>  Change the duration of a person is given to sing.
+                        value:`\`${prefix}settimer\` <VALUE_IN_SECONDS>  Change the duration of a person is given to sing.
                                 \`${prefix}skip\`  Skip the current person in karaoke queue}`
                       })
                     .setTimestamp()
