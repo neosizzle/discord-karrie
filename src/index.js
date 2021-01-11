@@ -14,7 +14,7 @@ const TOKEN = process.env.TOKEN;
 const timer = require('./timer')
 const karaoke = require('./karaoke')
 const auth = require('./auth');
-const { parse } = require('dotenv/types');
+
 
 //declare prefix
 var prefix = 'k ' 
