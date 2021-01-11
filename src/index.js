@@ -3,9 +3,8 @@
  * todo:
  * 
  * -fix help 
- * -fix help
- * -fix ping
  * -addme songname
+ * -rework addme into new features
  */
 
 require('dotenv').config();
@@ -14,7 +13,8 @@ const bot = new Discord.Client();
 const TOKEN = process.env.TOKEN;
 const timer = require('./timer')
 const karaoke = require('./karaoke')
-const auth = require('./auth')
+const auth = require('./auth');
+const { parse } = require('dotenv/types');
 
 //declare prefix
 var prefix = 'k ' 
@@ -32,7 +32,7 @@ bot.on('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
   bot.user.setPresence({
     status: "online",  // You can show online, idle... Do not disturb is dnd
-    game: {
+    activity: {
         name: `${prefix} help`,  // The message shown
         type: "PLAYING" // PLAYING, WATCHING, LISTENING, STREAMING,
     }
@@ -49,30 +49,31 @@ bot.on('message', msg => {
     const embed = new Discord.MessageEmbed()
                     .setColor('#8cd9ff')
                     .setTitle('Karrie commands')
-                    .setAuthor('Karrie')
                     .setDescription('List of all available Karrie commands')
+                    .setAuthor('Karrie')
                     .attachFiles(['./res/karrie.png'])
                     .setThumbnail('attachment://karrie.png')
-                    .addFields(
-                      { name: '**General commands:**',
-                       value: `\`${prefix}help\` Shows available commands for Karrie
-                              \`${prefix}ping\` Checks your ping with the bot` },
-                      
-                      { name: '**Karaoke commands:**',
-                       value: `\`${prefix}start\` Starts karaoke session
-                              \`${prefix}stop\` Stops current karaoke session
-                              \`${prefix}addme\` Adds you to the karaoke queue
-                              \`${prefix}removeme\` Removes you from the karaoke queue
-                              \`${prefix}done\` Pass the turn to the next person in queue
-                              `},
-                      {name:'**Admin commands** \n__*Only those who has admin permissions can use these commands*__',
-                       value :`\`${prefix}hostrole <VALUE>\`  Change the role to be recognized by Karrie as a karaoke host.
-                                \`${prefix}setprefix <VALUE>\`  Change the prefix for Karrie commands.
-                                `},
-                      {name:`**Karaoke host commands** \n__*Only those who has admin permissions or ${hostRole} role can use these commands*__`,
-                        value:`\`${prefix}settimer <VALUE_IN_SECONDS>\`  Change the duration of a person is given to sing.
-                                \`${prefix}skip\`  Skip the current person in karaoke queue}`
-                      })
+                    .addFields({ name: '\u200B', value: '\u200B' },
+                                {name : '**__General commands:__**', value : "\u200b"},
+                                {name :`\`${prefix}help\``, value:`Shows available commands for Karrie`,inline: true},
+                                {name :`\`${prefix}ping\``, value:`Checks your ping with the bot`,inline: true},
+                                { name: '\u200B', value: '\u200B' },
+                                {name:'**__Karaoke commands:__**', value : "\u200b"},
+                                {name :`\`${prefix}start\``, value:`Starts karaoke session`,inline: true},
+                                {name :`\`${prefix}stop\``, value:`Stops ongoing karaoke session`,inline: true},
+                                {name :`\`${prefix}addme\``, value:`Adds you to the karaoke queue`,inline: true},
+                                {name :`\`${prefix}removeme\``, value:`Removes you from the karaoke queue`,inline: true},
+                                {name :`\`${prefix}done\``, value:`Pass the turn to the next person in queue`,inline: true},
+                                { name: '\u200B', value: '\u200B' },
+                                {name:'**__Admin commands:__**\n__*Only those who has admin permissions can use these commands*__', value : "\u200b"},
+                                {name :`\`${prefix}hostrole <VALUE>\``, value:`Change the role to be recognized by Karrie as a karaoke host`,inline: true},
+                                {name :`\`${prefix}setprefix <VALUE>\``, value:`Change the prefix for Karrie commands.`,inline: true},
+                                { name: '\u200B', value: '\u200B' },
+                                {name:`**__Karaoke host commands:__**\n__*Only those who has admin permissions or ${hostRole} role can use these commands*__`, value : "\u200b"},
+                                {name :`\`${prefix}settimer <VALUE_IN_SECONDS>\``, value:`Change the duration of a person is given to sing. To disable, set this to 0`,inline: true},
+                                {name :`\`${prefix}skip\``, value:`Skip the current person in karaoke queue`,inline: true}
+                                )
+                  
                     .setTimestamp()
 	                 
 
@@ -80,30 +81,6 @@ bot.on('message', msg => {
 
     msg.channel.send(embed)
 
-
-    // msg.channel.send(`
-    // ⠀
-    // __Karrie commands__ 
-    // **General commands:**
-    // ${prefix}help \` Shows available commands for Karrie\`
-    // ${prefix}ping \` Checks your ping with the bot\`
-      
-    // **Karaoke commands:**
-    // ${prefix}start \` Starts karaoke session\`
-    // ${prefix}stop \` Stops current karaoke session\`
-    // ${prefix}addme \` Adds you to the karaoke queue(can only be used in a session)\`
-    // ${prefix}removeme \` Removes you from the karaoke queue(can only be used in a session)\`
-    // ${prefix}done \` Pass the turn to the next person in queue(can only be used in a session)\`
-  
-    
-
-    // **Admin commands:**
-    // _Only those who has the role \'Karaoke Host\' or admin rights may use these commands_
-    // ${prefix}settimer <VALUE_IN_SECONDS> \` Change the duration of a person is given to sing.\`
-    // ${prefix}setprefix <VALUE> \` Change the prefix for Karrie commands.\`
-    // ${prefix}skip \` Skip the current person in karaoke queue\`
-    // ${prefix}hostrole <VALUE> \` Change the role to be recognized by Karrie as a karaoke host.\`
-    // `)
   }
 
   //listen for ping
@@ -118,7 +95,7 @@ bot.on('message', msg => {
         var embed =  ` Your ping is ${ping} ms from Karrie`
         
         // Then It Edits the message with the ping variable embed that you created
-        m.edit(msg.author + embed)
+        m.edit(`${msg.author} ${embed}`)
     });
   }
 
@@ -131,9 +108,14 @@ bot.on('message', msg => {
     }
 
     var newDuration = msg.content.substr(`${prefix}settimer `.length)
+    //disable timer
+    if(!parseInt(newDuration)){
+      timer.setDuration(parseInt(newDuration))
+      return msg.channel.send(`Timer has been disabled!`)
+    }
 
     //min and max limit(3 to 7 minutes)
-    if(!parseInt(newDuration) || parseInt(newDuration) > 420){
+    if(parseInt(newDuration) > 420 || parseInt(newDuration) < 0){
       return msg.channel.send('Please enter a valid integer less than \`420\` seconds!')
     }
 
