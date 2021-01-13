@@ -1,3 +1,12 @@
+sessionID = null
+
+const setSessionID = (id)=>{
+    sessionID = id
+}
+
+const getSessionID = ()=>{
+    return sessionID
+}
 
 const authenticate = (roles,authRole)=>{
 
@@ -5,7 +14,14 @@ const authenticate = (roles,authRole)=>{
     return false
 }
 
+const vcAuth = (id)=>{
+    return id == sessionID
+}
+
 
 module.exports = {
-    authenticate
+    setSessionID,
+    getSessionID,
+    authenticate,
+    vcAuth
 }

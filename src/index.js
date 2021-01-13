@@ -2,9 +2,10 @@
  * 
  * todo:
  * 
- * -fix help 
+ * -upvote
  * -addme songname
  * -rework addme into new features
+ * 
  */
 
 require('dotenv').config();
@@ -14,11 +15,10 @@ const TOKEN = process.env.TOKEN;
 const timer = require('./timer')
 const karaoke = require('./karaoke')
 const auth = require('./auth');
-
+process.on("unhandledRejection", console.error);
 
 //declare prefix
 var prefix = 'k ' 
-
 
 
 //declare dafault karaoke host role
@@ -41,6 +41,7 @@ bot.on('ready', () => {
 
 //listening to message events
 bot.on('message', msg => {
+
 
   //listen for help
   if(msg.content == `${prefix}help`){
@@ -172,8 +173,75 @@ bot.on('message', msg => {
     })
   }
 
+  //listen for quickstart
+  if(msg.content == `${prefix}quickstart`){
+    //set vc id to auth
+    var guild = msg.guild
+    var member = guild.members.cache.get(msg.author.id)
+    auth.setSessionID(member.voice.channelID)
+    //creating queue
+    var queue = []
+
+    //creating custom embed
+    const embed = new Discord.MessageEmbed()
+    .setColor('#8cd9ff')
+    .addFields(
+      { name: `${msg.author.username} wants to start a karaoke session!`, value: 'react with 👍 to participate' },
+    )
+    .setTimestamp()
+  
+    msg.channel.send(embed).then((sentMsg)=>{
+      sentMsg.react('👍')
+      const filter = (reaction, user) => {
+        return reaction.emoji.name === '👍'
+      };
+      
+      const collector = sentMsg.createReactionCollector(filter, { time: 6000 });
+    
+      collector.on('collect', (reaction, user) => {
+        var reactedMember = guild.members.cache.get(user.id)
+        if(!reactedMember) return // bots reaction
+        if(auth.vcAuth(reactedMember.voice.channelID)){
+          queue.push(user)
+        }
+        else{
+          if(user.bot){
+            return
+          }
+          msg.channel.send(`${user}, please join the voice channel, \`${member.voice.channel.name}\` to participate!`)
+        }
+        
+      });
+
+      collector.on('end', collected => {
+        //sets the queue and begins the session
+        karaoke.setQueue(queue)
+        karaoke.start((err,data)=>{
+          if(err){
+            return msg.channel.send(err)
+          }
+          return msg.channel.send(data)
+        })
+        queue = []
+      });
+    })
+
+    
+  }
+
   //listen for start
   if(msg.content == `${prefix}start`){
+    var guild = msg.guild
+    var member = guild.members.cache.get(msg.author.id)
+
+    //vc check
+    if(!member.voice.channel){
+      return msg.channel.send(`You are not in a voice channel, ${msg.author}`)
+    }
+
+    //set vc id to auth
+    auth.setSessionID(member.voice.channelID)
+
     karaoke.start((err,data)=>{
       if(err){
         return msg.channel.send(err)
@@ -184,6 +252,12 @@ bot.on('message', msg => {
 
   //listen for stop
   if(msg.content == `${prefix}stop`){
+    //admin check
+    //admin authentication
+    if(!auth.authenticate(msg.member.roles.cache,hostRole) && !msg.member.hasPermission('ADMINISTRATOR')){
+      return msg.channel.send(`YOU ARE NOT WORTHY ${msg.author}`)
+    }
+
     karaoke.stop(prefix,(err,data)=>{
         if(err){
           return msg.channel.send(err)
@@ -194,6 +268,20 @@ bot.on('message', msg => {
 
   //listen for addme
   if(msg.content == `${prefix}addme`){
+    //vc auth
+    var guild = msg.guild
+    var member = guild.members.cache.get(msg.author.id)
+    var channel = msg.guild.channels.cache.get(auth.getSessionID())
+    
+    if(!channel){
+      return msg.channel.send(`No session active! Please use \`${prefix}start\` to start a session!`)
+    }
+    
+    if(!auth.vcAuth(member.voice.channelID)){
+      return msg.channel.send(`${msg.author}, please join the voice channel, \`${channel.name}\` to participate!`)
+    }
+
+    //add author to karaoke queue
     karaoke.addme(msg.author, prefix, (err,data)=>{
       if(err){
         return msg.channel.send(err)
@@ -237,6 +325,7 @@ bot.on('message', msg => {
      return msg.channel.send(embed)
    })
   }
+ 
 
   //listen for hostrole
   if(msg.content.startsWith(`${prefix}hostrole`)){

@@ -1,4 +1,5 @@
 var timer = require('./timer')
+var auth = require('./auth')
 
 //declare session variable and queue 
 var queue = []
@@ -7,6 +8,17 @@ var session = false
 //declare inturn status
 var inTurn = false
 
+//set queue in bulk
+const setQueue = (arr)=>{
+  queue = arr
+  return
+}
+
+//get queue
+const getQueue = ()=>{
+  return queue
+}
+
 //start karaoke session
 const start = (callback)=>{
     //throws error when there is already an active session
@@ -14,8 +26,16 @@ const start = (callback)=>{
         return callback(' Karaoke session is already active!',null)
     }
     session = true
-    queue = []
     callback(null, `Karaoke session started!`)
+
+    //quickstart check
+    if(queue.length != 0){
+      inTurn = true
+      callback(`Its ${queue[0]}'s turn to sing now!`)
+      timer.startTurnTimer(() => { 
+        done(queue[0], prefix, callback)
+      })
+    }
 
     //timer check
     if(!timer.getDuration()){
@@ -28,6 +48,7 @@ const start = (callback)=>{
       callback('Times up! session closing...', null)
       session = false
       inTurn = false
+      queue = []
     })
 }
 
@@ -179,6 +200,8 @@ const skip = (prefix,callback)=>{
 }
 
 module.exports = {
+    setQueue,
+    getQueue,
     start,
     stop,
     addme,
