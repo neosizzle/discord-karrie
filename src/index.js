@@ -60,7 +60,8 @@ bot.on('message', msg => {
                                 {name :`\`${prefix}ping\``, value:`Checks your ping with the bot`,inline: true},
                                 { name: '\u200B', value: '\u200B' },
                                 {name:'**__Karaoke commands:__**', value : "\u200b"},
-                                {name :`\`${prefix}start\``, value:`Starts karaoke session`,inline: true},
+                                {name :`\`${prefix}quickstart\``, value:`Starts karaoke session with the people in the same voice channel`,inline: true},
+                                {name :`\`${prefix}start\``, value:`Starts karaoke session the manual way`,inline: true},
                                 {name :`\`${prefix}stop\``, value:`Stops ongoing karaoke session`,inline: true},
                                 {name :`\`${prefix}addme\``, value:`Adds you to the karaoke queue`,inline: true},
                                 {name :`\`${prefix}removeme\``, value:`Removes you from the karaoke queue`,inline: true},
@@ -178,7 +179,15 @@ bot.on('message', msg => {
     //set vc id to auth
     var guild = msg.guild
     var member = guild.members.cache.get(msg.author.id)
+    var channel = bot.channels.cache.get(member.voice.channelID) // different declaration (using bot)
     auth.setSessionID(member.voice.channelID)
+
+    //minimum 3 people are required in a channel to initialize a vote
+    var channelSize = channel.members.size
+    if(channelSize < 3){
+      return msg.channel.send('A minimum of 3 people is required to start a quickstart session!')
+    }
+
     //creating queue
     var queue = []
 
@@ -186,18 +195,20 @@ bot.on('message', msg => {
     const embed = new Discord.MessageEmbed()
     .setColor('#8cd9ff')
     .addFields(
-      { name: `${msg.author.username} wants to start a karaoke session!`, value: 'react with 👍 to participate' },
+      { name: `${msg.author.username} wants to start a karaoke session!`, value: `react with 🎙️ to participate \`(${channelSize *(2/3)} participants needed.)\`` },
     )
     .setTimestamp()
   
+    //listen for emoji votes
     msg.channel.send(embed).then((sentMsg)=>{
-      sentMsg.react('👍')
+      sentMsg.react('🎙️')
       const filter = (reaction, user) => {
-        return reaction.emoji.name === '👍'
+        return reaction.emoji.name === '🎙️'
       };
       
       const collector = sentMsg.createReactionCollector(filter, { time: 6000 });
     
+      //on every reaction confirmed, push said user to queue
       collector.on('collect', (reaction, user) => {
         var reactedMember = guild.members.cache.get(user.id)
         if(!reactedMember) return // bots reaction
@@ -214,6 +225,11 @@ bot.on('message', msg => {
       });
 
       collector.on('end', collected => {
+        //checks if the collected size is equals of expected number of people to start
+        if(queue.length < channelSize *(2/3)){
+          return msg.channel.send('Not enough votes to begin the session :(')
+        }
+
         //sets the queue and begins the session
         karaoke.setQueue(queue)
         karaoke.start((err,data)=>{
@@ -222,7 +238,6 @@ bot.on('message', msg => {
           }
           return msg.channel.send(data)
         })
-        queue = []
       });
     })
 
