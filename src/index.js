@@ -182,6 +182,11 @@ bot.on('message', msg => {
     var channel = bot.channels.cache.get(member.voice.channelID) // different declaration (using bot)
     auth.setSessionID(member.voice.channelID)
 
+    //check if the user is in a voice channel
+    if(!channel){
+      return msg.channel.send('You are not in a voice channel!')
+    }
+
     //minimum 3 people are required in a channel to initialize a vote
     var channelSize = channel.members.size
     if(channelSize < 3){
