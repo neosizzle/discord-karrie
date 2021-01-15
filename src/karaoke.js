@@ -33,6 +33,7 @@ const start = (prefix,callback)=>{
 
       //timer check
         if(!timer.getDuration()){
+          callback(null,`Its ${queue[0]}'s turn to sing now!`)
           return
         }
 
