@@ -18,7 +18,7 @@ const auth = require('./auth');
 process.on("unhandledRejection", console.error);
 
 //declare prefix
-var prefix = 'k ' 
+var prefix = 's ' 
 
 
 //declare dafault karaoke host role
@@ -211,7 +211,7 @@ bot.on('message', msg => {
         return reaction.emoji.name === '🎙️'
       };
       
-      const collector = sentMsg.createReactionCollector(filter, { time: 6000 });
+      const collector = sentMsg.createReactionCollector(filter, { time: 9000 });
     
       //on every reaction confirmed, push said user to queue
       collector.on('collect', (reaction, user) => {
@@ -237,7 +237,7 @@ bot.on('message', msg => {
 
         //sets the queue and begins the session
         karaoke.setQueue(queue)
-        karaoke.start((err,data)=>{
+        karaoke.start(prefix,(err,data)=>{
           if(err){
             return msg.channel.send(err)
           }
@@ -262,7 +262,7 @@ bot.on('message', msg => {
     //set vc id to auth
     auth.setSessionID(member.voice.channelID)
 
-    karaoke.start((err,data)=>{
+    karaoke.start(prefix,(err,data)=>{
       if(err){
         return msg.channel.send(err)
       }
