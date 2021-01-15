@@ -30,16 +30,23 @@ const start = (prefix,callback)=>{
 
     //quickstart check
     if(queue.length != 0){
-      inTurn = true
-      callback(`Its ${queue[0]}'s turn to sing now!`)
-      
+
       //timer check
         if(!timer.getDuration()){
           return
         }
-      timer.startTurnTimer(() => { 
-        done(queue[0], prefix, callback)
-      })
+
+        //timer is enabled, start queue as usual
+        inTurn = true
+        timer.stopTimer()
+
+        callback(null , `Timer is enabled! each person has up to \`${timer.getDuration()} seconds\` to sing.`)
+        callback(null,`Its ${queue[0]}'s turn to sing now!`)
+       return timer.startTurnTimer(() => {
+          done(queue[0], prefix, callback)
+        })
+
+        
     }
 
     //timer check
@@ -82,6 +89,7 @@ const addme = (user,prefix,callback)=>{
         return callback(`Please wait until your turn has finished!`,null)       
       }
 
+      //adds user to queue
       queue.push(user)
       callback(null,` You have been added into the queue, ${user}! type \`${prefix}queue\` to view your position!`)
 
@@ -95,7 +103,7 @@ const addme = (user,prefix,callback)=>{
     if(queue.length == 1){
       inTurn = true
       timer.stopTimer()
-      callback(`Its ${queue[0]}'s turn to sing now!`)
+      callback(null,`Its ${queue[0]}'s turn to sing now!`)
       timer.startTurnTimer(() => {
         done(queue[0], prefix, callback)
       })
@@ -133,7 +141,8 @@ const removeme = (user, prefix, callback)=>{
 const done = (user,prefix,callback)=>{
     //no session
     if(!session){
-        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)       
+        callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)     
+        return   
       }
 
     //user not in queue
@@ -143,15 +152,17 @@ const done = (user,prefix,callback)=>{
       }
 
 
-      callback(null,`Thank you for your performance, ${user}!`)
       timer.stopTimer()
+      callback(null,`Thank you for your performance, ${user}!`)
       queue.shift()
 
       //timer disabled
       if(!timer.getDuration()){
         //last person in queue
         if(queue.length==0){
+          inTurn == false
           return callback(`Queue is empty! use \`${prefix}addme\` to start singing!`,null)
+          
         }
 
         callback(null,`Its ${queue[0]}'s turn to sing now!`)
@@ -162,11 +173,10 @@ const done = (user,prefix,callback)=>{
       //queue has no people left
       if(queue.length == 0){
         inTurn = false
-        callback(`Current queue is empty! Use \`${prefix}addme\` to sing!`,null)
         timer.stopTimer()
+        callback(`Current queue is empty! Use \`${prefix}addme\` to sing!`,null)
         timer.startSessionCountdown(()=>{
-          callback('Times up! session closing..',null)
-          session = false
+          return stop(prefix,callback)
         })
         return
       }

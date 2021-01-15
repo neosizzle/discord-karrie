@@ -4,7 +4,7 @@
  * 
  * -upvote
  * -addme songname
- * -rework addme into new features
+ * 
  * 
  */
 
@@ -15,6 +15,7 @@ const TOKEN = process.env.TOKEN;
 const timer = require('./timer')
 const karaoke = require('./karaoke')
 const auth = require('./auth');
+const event = require('./event')
 process.on("unhandledRejection", console.error);
 
 //declare prefix
@@ -62,7 +63,6 @@ bot.on('message', msg => {
                                 {name:'**__Karaoke commands:__**', value : "\u200b"},
                                 {name :`\`${prefix}quickstart\``, value:`Starts karaoke session with the people in the same voice channel`,inline: true},
                                 {name :`\`${prefix}start\``, value:`Starts karaoke session the manual way`,inline: true},
-                                {name :`\`${prefix}stop\``, value:`Stops ongoing karaoke session`,inline: true},
                                 {name :`\`${prefix}addme\``, value:`Adds you to the karaoke queue`,inline: true},
                                 {name :`\`${prefix}removeme\``, value:`Removes you from the karaoke queue`,inline: true},
                                 {name :`\`${prefix}done\``, value:`Pass the turn to the next person in queue`,inline: true},
@@ -73,7 +73,8 @@ bot.on('message', msg => {
                                 { name: '\u200B', value: '\u200B' },
                                 {name:`**__Karaoke host commands:__**\n__*Only those who has admin permissions or ${hostRole} role can use these commands*__`, value : "\u200b"},
                                 {name :`\`${prefix}settimer <VALUE_IN_SECONDS>\``, value:`Change the duration of a person is given to sing. To disable, set this to 0`,inline: true},
-                                {name :`\`${prefix}skip\``, value:`Skip the current person in karaoke queue`,inline: true}
+                                {name :`\`${prefix}skip\``, value:`Skip the current person in karaoke queue`,inline: true},
+                                {name :`\`${prefix}stop\``, value:`Stops ongoing karaoke session`,inline: true}
                                 )
                   
                     .setTimestamp()
@@ -182,6 +183,9 @@ bot.on('message', msg => {
     var channel = bot.channels.cache.get(member.voice.channelID) // different declaration (using bot)
     auth.setSessionID(member.voice.channelID)
 
+    //set ongoing uninterruptable event (disables other karaoke session starting events)
+    event.activateEvent();
+
     //check if the user is in a voice channel
     if(!channel){
       return msg.channel.send('You are not in a voice channel!')
@@ -200,7 +204,7 @@ bot.on('message', msg => {
     const embed = new Discord.MessageEmbed()
     .setColor('#8cd9ff')
     .addFields(
-      { name: `${msg.author.username} wants to start a karaoke session!`, value: `react with 🎙️ to participate \`(${channelSize *(2/3)} participants needed.)\`` },
+      { name: `${msg.author.username} wants to start a karaoke session!`, value: `react with 🎙️ to participate \`(${Math.round(channelSize *(2/3))} participants needed.)\`` },
     )
     .setTimestamp()
   
@@ -230,6 +234,9 @@ bot.on('message', msg => {
       });
 
       collector.on('end', collected => {
+        //voting ended, event ended.
+        event.stopEvent()
+
         //checks if the collected size is equals of expected number of people to start
         if(queue.length < channelSize *(2/3)){
           return msg.channel.send('Not enough votes to begin the session :(')
@@ -251,6 +258,12 @@ bot.on('message', msg => {
 
   //listen for start
   if(msg.content == `${prefix}start`){
+    //ongoing event check
+    if(event.checkEvent()){
+      return msg.channel.send(`You cant do that right now!`)
+    }
+
+
     var guild = msg.guild
     var member = guild.members.cache.get(msg.author.id)
 

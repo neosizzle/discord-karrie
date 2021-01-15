@@ -13,8 +13,8 @@ const startTimer = (duration, callback)=>{
      timer = setInterval(() => {
          d = new Date
 
-        //  console.log(d)
-        //  console.log(f)
+        //  console.log(`${d}`)
+        //  console.log(`${f} \n`)
          if (d >= f) {
              clearInterval(timer)
              callback()
@@ -35,10 +35,11 @@ const getDuration = ()=>{
 }
 
 //start sessionTimer
-const startSessionCountdown = async (callback)=>{
+const startSessionCountdown = (callback)=>{
 
     startTimer(duration, ()=>{
         callback()
+        
     })
     
 }
@@ -47,12 +48,14 @@ const startSessionCountdown = async (callback)=>{
 const startTurnTimer = (callback)=>{
     startTimer(duration, ()=>{
         callback()
+        
     })
 }
 
 //stop turn timer
 const stopTimer = ()=>{
     clearInterval(timer)
+   
 }
 
 
