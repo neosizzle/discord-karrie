@@ -18,7 +18,7 @@ const auth = require('./auth');
 process.on("unhandledRejection", console.error);
 
 //declare prefix
-var prefix = 's ' 
+var prefix = 'k ' 
 
 
 //declare dafault karaoke host role
