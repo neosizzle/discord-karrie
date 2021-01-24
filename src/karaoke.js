@@ -1,12 +1,12 @@
-var timer = require('./timer')
-var auth = require('./auth')
+var turnTimer = require('./turnTimer')
+var sessionTimer = require('./sessionTimer')
+var Guild = require('../models/Guild')
 
 //declare session variable and queue 
 var queue = []
 var session = false
 
-//declare inturn status
-var inTurn = false
+
 
 //set queue in bulk
 const setQueue = (arr)=>{
@@ -20,219 +20,409 @@ const getQueue = ()=>{
 }
 
 //start karaoke session
-const start = (prefix,callback)=>{
+const start = async (prefix,credentials,callback)=>{
+
+  //get the guild from db using guildid
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+  }catch(e){
+    return console.error(e)
+  }
     //throws error when there is already an active session
-    if(session){
-        return callback(' Karaoke session is already active!',null)
+    if(guild.session){
+        return callback(`Session already active!`, credentials)
     }
-    session = true
-    callback(null, `Karaoke session started!`)
+
+    //update the guild session to true
+    try{
+      await Guild.updateOne({guildId : guild.guildId} , {session : true})
+    }catch(e){
+      console.error(e)
+    }
+    callback(`Session starting..`, credentials)
+
 
     //quickstart check
-    if(queue.length != 0){
+    if(guild.queue.length != 0){
+
+      //user fetch module
+      const fetch = require('node-fetch')
+
+      //bot token
+      const token = process.env.TOKEN
+
+      //send get request to discord api to fetch user
+      const fetchUser = async id => {
+        const response = await fetch(`https://discord.com/api/v8/users/${id}`, {
+          headers: {
+            Authorization: `Bot ${token}`
+          }
+        })
+        if (!response.ok) throw new Error(`Error status code: ${response.status}`)
+        return await response.json()
+      }
+
+      var userObj = await fetchUser(guild.queue[0])
 
       //timer check
-        if(!timer.getDuration()){
-          callback(null,`Its ${queue[0]}'s turn to sing now!`)
+        if(guild.duration == 0){
+          callback(`Its ${userObj.username}'s turn to sing now!`, credentials)
           return
         }
 
         //timer is enabled, start queue as usual
-        inTurn = true
-        timer.stopTimer()
+        //update the guild inturn to true
+        try{
+          await Guild.updateOne({guildId : guild.guildId} , {inTurn : true})
+        }catch(e){
+          console.error(e)
+        }
 
-        callback(null , `Timer is enabled! each person has up to \`${timer.getDuration()} seconds\` to sing.`)
-        callback(null,`Its ${queue[0]}'s turn to sing now!`)
-       return timer.startTurnTimer(() => {
-          done(queue[0], prefix, callback)
+
+        callback(`Each person is allowed \`${guild.duration / 1000}\` seconds to sing!`,credentials)
+        callback(`Its ${userObj.username}'s turn to sing now!`, credentials)
+
+        //start turn timer
+        return turnTimer.startCountdown(credentials, async (credentials)=>{
+          done(prefix,credentials, callback)
         })
 
         
     }
 
     //timer check
-    if(!timer.getDuration()){
+    if(guild.duration == 0){
       return
     }
 
-    callback(null , `Timer is enabled! each person has up to \`${timer.getDuration()} seconds\` to sing.`)
-    //start counting down for idle session
-    timer.startSessionCountdown(()=>{
-      callback('Times up! session closing...', null)
-      session = false
-      inTurn = false
-      queue = []
-    })
+    callback(`Each person is allowed \`${guild.duration / 1000}\` seconds to sing!`,credentials)
+
+ 
+        //start counting down for idle session
+        sessionTimer.startCountdown(credentials,async (credentials)=>{
+          try{
+            await Guild.updateOne({guildId : credentials.guildId},{session : false, inTurn : false, queue : []})
+            return callback('Times up, session closing..', credentials)
+
+          }catch(e){
+            return console.error(e)
+          }
+        })
+  
+
+    return
+    
 }
 
 //stops karaoke session
-const stop = (prefix,callback)=>{
+const stop = async (prefix,credentials,callback)=>{
+  //get the guild from db using guildid
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+  }catch(e){
+    return console.error(e)
+  }
+
     //throws error when there is no session
-    if(!session){
-        return callback(`No session active! Please use \`${prefix}start\` to start a session!`,null)
+    if(!guild.session){
+        return callback(`No session active! Please use \`${prefix}start\` to start a session!`,credentials)
     }
-    session = false
-    inTurn = false
-    queue = []
-    timer.stopTimer()
-    return callback(null, `Karaoke session stopped!`)
+
+    //update properties in db
+    try{
+      await Guild.updateOne({guildId : credentials.guildId}, {session : false, inTurn : false, queue : [],voiceChannelId : ''})
+
+      //stopping timer
+      turnTimer.stopCountdown(credentials)
+      sessionTimer.stopCountdown(credentials)
+      return callback(`Karaoke session stopped!`,credentials)
+    }catch(e){
+      console.error(e)
+    }
+  
+    
 }
 
 //adds person in queue
-const addme = (user,prefix,callback)=>{
+const addme = async (prefix,credentials,callback)=>{
+
+  //looks for current guild in Db
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+  }catch(e){
+    console.error(e)
+  }
+
     //no session
-    if(!session){
-        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)       
+    if(!guild.session){
+        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,credentials)       
       }
 
     //user in queue
-    if(queue.includes(user)){
-        return callback(`Please wait until your turn has finished!`,null)       
+    if(guild.queue.includes(credentials.userId)){
+        return callback(`Please wait until your turn has finished!`,credentials)       
       }
 
       //adds user to queue
-      queue.push(user)
-      callback(null,` You have been added into the queue, ${user}! type \`${prefix}queue\` to view your position!`)
+      try{
+        var tempQueue = guild.queue
+        tempQueue.push(credentials.userId)
+        await Guild.updateOne({guildId : credentials.guildId} , {queue : tempQueue})
+
+      }catch(e){
+          console.error(e)
+      }
+      callback(` You have been added into the queue! type \`${prefix}queue\` to view your position!`, credentials)
 
       //timer check with first person in queue
-      if((!timer.getDuration() || inTurn) && queue.length == 1){
-      callback(`Its ${queue[0]}'s turn to sing now!`)
+      if((!guild.duration || guild.inTurn) && guild.queue.length == 1){
+      callback(null, credentials)//Its xs turn to sing now
       return
     }
 
     //check if the current user is the first on the queue
-    if(queue.length == 1){
-      inTurn = true
-      timer.stopTimer()
-      callback(null,`Its ${queue[0]}'s turn to sing now!`)
-      timer.startTurnTimer(() => {
-        done(queue[0], prefix, callback)
+    if(guild.queue.length == 1){
+
+      //update guild proterties
+      try{
+        await Guild.updateOne({guildId : credentials.guildId}, {inTurn : true})
+      }catch(e){
+        console.error(e)
+      }
+
+      
+
+      callback(null,credentials)// its xs turn to sing now
+
+      //stopping idle session coutndown
+      sessionTimer.stopCountdown(credentials)
+
+    
+        //starts turn countdown
+        turnTimer.startCountdown(credentials, async (credentials) => {
+        return done(prefix,credentials, callback)
       })
+      
+      
+
+      
     }
+
+    return
 
 }
 
 //removes person in queue
-const removeme = (user, prefix, callback)=>{
+const removeme = async (prefix,credentials, callback)=>{
+
+  //looks for current guild in Db
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+  }catch(e){
+    console.error(e)
+  }
+
     //no session
-    if(!session){
-        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)       
+    if(!guild.session){
+        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,credentials)       
       }
 
     //user not in queue
-    if(!queue.includes(user)){
-        return callback(`You are not in the queue!`, null)
+    if(!guild.queue.includes(credentials.userId)){
+        return callback(`You are not in the queue!`, credentials)
         
       }
 
     //user is singing now, use the done command instead
-    if(user == queue[0]){
-      return callback(`${user}, \`use ${prefix}done'\` instead!`, null)
+    if(credentials.userId == guild.queue[0]){
+      return callback(`Use \`${prefix}done\` instead!`, credentials)
     }
 
-      queue = queue.filter((name)=>{
-        return name != user
+    //remove the user in queue
+    var tempQueue = guild.queue
+      tempQueue = tempQueue.filter((userId)=>{
+        return userId != credentials.userId
       })
       
+    //update the queue in guild
+    try{
+      await Guild.updateOne({guildId : credentials.guildId} , {queue : tempQueue})
+
+    }catch(e){
+        console.error(e)
+    }
       
-      return callback(null,` You have been removed from the queue!`)
+      return callback(`You have been removed from the queue!`,credentials)
 }
 
 //person done with their turn
-const done = (user,prefix,callback)=>{
+const done = async (prefix,credentials,callback)=>{
+
+  //get guild from DB
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+    
+  }catch(e){
+    console.error(e)
+  }
     //no session
-    if(!session){
-        callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)     
+    if(guild.session == false){
+        callback(` No session active! Please use \`${prefix}start\` to start a session!`,credentials)     
         return   
       }
 
-    //user not in queue
-    if(user!= queue[0]){
-        return callback(`Its not your turn, ${user} !`, null)
+      
+
+    //user not in top of queue
+    if(credentials.userId != guild.queue[0]){
+      const fetch = require('node-fetch')
+
+        //bot token
+        const token = process.env.TOKEN
+
+        //send get request to discord api to fetch user
+        const fetchUser = async id => {
+          const response = await fetch(`https://discord.com/api/v8/users/${id}`, {
+            headers: {
+              Authorization: `Bot ${token}`
+            }
+          })
+          if (!response.ok) throw new Error(`Error status code: ${response.status}`)
+          return await response.json()
+        }
+
+        var userObj = await fetchUser(credentials.userId)
+        callback(`Its not your turn, ${userObj.username}`, credentials)
+        return
         
       }
 
+      
 
-      timer.stopTimer()
-      callback(null,`Thank you for your performance, ${user}!`)
-      queue.shift()
+      //callback to index
+      callback('Thank you for you performance!' , credentials)
 
-      //timer disabled
-      if(!timer.getDuration()){
-        //last person in queue
-        if(queue.length==0){
-          inTurn == false
-          return callback(`Queue is empty! use \`${prefix}addme\` to start singing!`,null)
-          
+      //shift the queue on db
+      try{
+        var tempQueue = guild.queue
+        tempQueue.shift()
+        await Guild.updateOne({guildId : credentials.guildId}, {queue : tempQueue})
+      }catch(e){
+        console.error(e)
+      }
+      
+      //queue has no people left
+      if(guild.queue.length == 0){
+
+        //update guild properties in db
+        try{
+          await Guild.updateOne({guildId : credentials.guildId}, {inTurn : false})
+        }catch(e){
+          console.error(e)
         }
 
-        callback(null,`Its ${queue[0]}'s turn to sing now!`)
-        return;
-      }
+        //stop turn timer
+        turnTimer.stopCountdown(credentials)
+
+          
+          callback(`Current queue is empty! Use \`${prefix}addme\` to sing!`,credentials)
 
 
-      //queue has no people left
-      if(queue.length == 0){
-        inTurn = false
-        timer.stopTimer()
-        callback(`Current queue is empty! Use \`${prefix}addme\` to sing!`,null)
-        timer.startSessionCountdown(()=>{
-          return stop(prefix,callback)
-        })
+          //start idle session timer
+          sessionTimer.startCountdown(credentials,(credentials)=>{
+            return stop(prefix,credentials,callback)
+          })
         return
       }
 
 
+      //timer disabled
+      if(!guild.duration){
+        //last person in queue
+        if(guild.queue.length==0){
+          //update guild properties in db
+            try{
+              await Guild.updateOne({guildId : credentials.guildId}, {inTurn : false})
+            }catch(e){
+              console.error(e)
+            }
+          return callback(`Queue is empty! use \`${prefix}addme\` to start singing!`,credentials)
+          
+        }
 
-      callback(null,`Its ${queue[0]}'s turn to sing now!`)
-      timer.startTurnTimer(()=>{
-        done(queue[0], prefix, callback)
-      })
-      return
-    
-
-
-}
-
-//send the current queue
-const showqueue = (prefix,callback)=>{
-    //no session
-    if(!session){
-        return callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)       
+        callback(null,{guildId : credentials.guildId, channelId : credentials.channelId, userId : guild.queue[0]})//its xs turn to sing now
+        return;
       }
 
-      //string concat
-    var queueString = ``
-    for(i = 0; i < queue.length; i++){
-      queueString += `${i+1}. ${queue[i].username}\n`
-    }
 
-    //no one in queue
-    if(queue == ``){
-      return callback(`Queue is empty! use \`${prefix}addme\` to start singing!`,null)
+      
+      var newCreds = {
+        guildId : credentials.guildId,
+        channelId : credentials.channelId,
+        userId : guild.queue[0]
+      }
+
+      //callback next singer to index
+      callback(null,newCreds)//its xs turn to sing now
+
+        //starts turn timer
+        turnTimer.startCountdown(newCreds,(credentials)=>{
+        
+        done(credentials, prefix, callback)
+      })
+
     
-    }
-    
-    callback(null,`\`${queueString}\``)
-    queueString = ``
-    return
+
+
 }
 
+
 //skip the current person at queue
-const skip = (prefix,callback)=>{
+const skip = async (prefix,credentials,callback)=>{
+
+  //looks for current guild in Db
+  try{
+    var guild = await Guild.findOne({guildId : credentials.guildId})
+  }catch(e){
+    console.error(e)
+  }
+
   //no session
-  if(!session){
+  if(!guild.session){
     return callback(` No session active! Please use \`${prefix}start\` to start a session!`,null)       
   }
 
   //no one to skip
-  if(queue.length == 0){
-    return callback(`There is no one to skip!`, null)
+  if(guild.queue.length == 0){
+    return callback(`There is no one to skip!`, credentials)
   }
 
-  //skipping, basiaclly calling done on current person
-  callback(null,`${queue[0]} had been skipped!`)
-  done(queue[0], prefix, callback)
+    //user fetch module
+    const fetch = require('node-fetch')
+
+    //bot token
+    const token = process.env.TOKEN
+
+    //send get request to discord api to fetch user
+    const fetchUser = async id => {
+      const response = await fetch(`https://discord.com/api/v8/users/${id}`, {
+        headers: {
+          Authorization: `Bot ${token}`
+        }
+      })
+      if (!response.ok) throw new Error(`Error status code: ${response.status}`)
+      return await response.json()
+    }
+
+    var userObj = await fetchUser(guild.queue[0])
+    callback(`${userObj.username} has been skipped!`, credentials)
+
+    //skipping, basiaclly calling done on current person
+    turnTimer.stopCountdown(credentials)
+    return done(prefix,credentials, callback)
+    
+    
+  
 
 }
 
@@ -244,6 +434,6 @@ module.exports = {
     addme,
     removeme,
     done,
-    showqueue,
     skip
 }
+
