@@ -67,7 +67,18 @@ bot.on("guildCreate", async (guild) => {
     console.error(e)
   }
   
+  //send welc msg
+  let defaultChannel = "";
+  guild.channels.cache.forEach((channel) => {
+    if(channel.type == "text" && defaultChannel == "") {
+      if(channel.permissionsFor(guild.me).has("SEND_MESSAGES")) {
+        defaultChannel = channel;
+      }
+    }
+  })
 
+  defaultChannel.send(`Thanks for having me! Use \`${prefix}start\` to start a karaoke session or use \`${prefix}help\` to view my commands.`)
+  
 
 })
 
