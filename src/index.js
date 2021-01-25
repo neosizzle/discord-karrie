@@ -18,7 +18,7 @@ const TOKEN = process.env.TOKEN;
 //required modules
 const auth = require('./auth');
 const karaoke = require('./karaoke')
-const activeEvent = require('./event')
+
 
 
 process.on("unhandledRejection", console.error);
@@ -27,7 +27,7 @@ require('../db/mongoose')//establishing connection to db
 const Guild = require('../models/Guild')
 
 //instansiate prefix
-var prefix = 's '
+var prefix = 'k '
 
 //declare dafault karaoke host role
 var hostRole = 'Karaoke Host'
@@ -44,7 +44,7 @@ bot.on('ready', () => {
   bot.user.setPresence({
     status: "online",  // You can show online, idle... Do not disturb is dnd
     activity: {
-        name: `s help`,  // The message shown
+        name: `k help`,  // The message shown
         type: "PLAYING" // PLAYING, WATCHING, LISTENING, STREAMING,
     }
 });
