@@ -89,8 +89,9 @@ bot.on("guildDelete", async(guild)=>{
 bot.on('message', async msg => {
   //change the prefix to listen for according to the server
   if(!msg.author.bot){
-    guild = await Guild.findOne({guildId : msg.guild.id})
+    var guild = await Guild.findOne({guildId : msg.guild.id})
     prefix = guild.prefix
+
   }
 
 
