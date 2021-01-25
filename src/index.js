@@ -89,8 +89,13 @@ bot.on("guildDelete", async(guild)=>{
 bot.on('message', async msg => {
   //change the prefix to listen for according to the server
   if(!msg.author.bot){
-    var guild = await Guild.findOne({guildId : msg.guild.id})
-    prefix = guild.prefix
+    try{
+      var guild = await Guild.findOne({guildId : msg.guild.id})
+      prefix = guild.prefix
+      console.log(prefix)
+    }catch(e){
+      console.log('that gay prefix error that i cant find... yet')
+    }
 
   }
 
