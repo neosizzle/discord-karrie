@@ -92,7 +92,6 @@ bot.on('message', async msg => {
     try{
       var guild = await Guild.findOne({guildId : msg.guild.id})
       prefix = guild.prefix
-      console.log(prefix)
     }catch(e){
       console.log('that gay prefix error that i cant find... yet')
     }
