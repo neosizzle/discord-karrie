@@ -474,7 +474,13 @@ bot.on('message', async msg => {
       return msg.channel.send(`No session active! Please use \`${prefix}start\` to start a session!`)
     }
 
-    var vcName = msg.guild.channels.cache.get(await auth.getSessionID({guildId : guild, channelId : channel, userId : user})).name
+    try{
+      var vcName = msg.guild.channels.cache.get(await auth.getSessionID({guildId : guild, channelId : channel, userId : user})).name
+    }catch(e){
+      //vc deleted not found
+      return msg.channel.send(`No voice channel found!`)
+    }
+    
     
     //vc auth
     if(! await auth.vcAuth(voiceChannel,{guildId : guild, channelId : channel, userId : user})){
