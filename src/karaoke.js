@@ -66,7 +66,7 @@ const start = async (prefix,credentials,callback)=>{
 
       //timer check
         if(guild.duration == 0){
-          callback(`Its ${userObj.username}'s turn to sing now!`, credentials)
+          callback(null, credentials)
           return
         }
 
@@ -80,7 +80,7 @@ const start = async (prefix,credentials,callback)=>{
 
 
         callback(`Each person is allowed \`${guild.duration / 1000}\` seconds to sing!`,credentials)
-        callback(`Its ${userObj.username}'s turn to sing now!`, credentials)
+        callback(null, credentials)
 
         //start turn timer
         return turnTimer.startCountdown(credentials, async (credentials)=>{
@@ -300,7 +300,7 @@ const done = async (prefix,credentials,callback)=>{
       
 
       //callback to index
-      callback('Thank you for you performance!' , credentials)
+      callback('Thank you for your performance!' , credentials)
 
       //shift the queue on db
       try{
