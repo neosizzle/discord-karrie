@@ -66,9 +66,9 @@ bot.on("guildCreate", async (guild) => {
   }catch(e){
     console.error(e)
   }
-  
+
   //send welc msg
-  let defaultChannel = "";
+    let defaultChannel = "";
   guild.channels.cache.forEach((channel) => {
     if(channel.type == "text" && defaultChannel == "") {
       if(channel.permissionsFor(guild.me).has("SEND_MESSAGES")) {
@@ -79,6 +79,7 @@ bot.on("guildCreate", async (guild) => {
 
   defaultChannel.send(`Thanks for having me! Use \`${prefix}start\` to start a karaoke session or use \`${prefix}help\` to view my commands.`)
   
+
 
 })
 
@@ -376,16 +377,23 @@ bot.on('message', async msg => {
         try{
           var currentGuild = await Guild.findOne({guildId : guild.id})
 
-          //stop uninterruptable  event
-          await Guild.updateOne({guildId : guild.id} , {ongoingEvent : false, voiceChannelId : ''})
+          //stop uninterruptable event
+          await Guild.updateOne({guildId : guild.id} , {ongoingEvent : false})
 
           //checks if the collected size is equals of expected number of people to start
-          if(currentGuild.queue.length < channelSize *(2/3)){
+          if(currentGuild.queue.length < Math.round(channelSize *(2/3))){
+            //empty the queue
+            await Guild.updateOne({guildId : guild.id} , {queue: []})
+
             return msg.channel.send('Not enough votes to begin the session :(')
           }
 
           //sets the queue and begins the session
           karaoke.start(prefix,{guildId : currentGuild.guildId, channelId : msg.channel.id, userId : msg.author.id},(data,credentials)=>{
+            if(!data){
+              return bot.channels.cache.get(credentials.channelId).send(`Its ${bot.users.cache.find(user => user.id === credentials.userId)}'s turn to sing now!`)
+            }
+
             return bot.channels.cache.get(credentials.channelId).send(data)
           })
 
@@ -480,7 +488,6 @@ bot.on('message', async msg => {
       //vc deleted not found
       return msg.channel.send(`No voice channel found!`)
     }
-    
     
     //vc auth
     if(! await auth.vcAuth(voiceChannel,{guildId : guild, channelId : channel, userId : user})){
